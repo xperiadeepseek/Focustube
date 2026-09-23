@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FocusTube</title>
+<style>
+    :root {
+        --bg-color: #0f0f0f;
+        --panel-bg: #212121;
+        --text-color: #f1f1f1;
+        --hover-color: #3d3d3d;
+        --accent: #ff0000;
+    }
+    body {
+        margin: 0;
+        padding: 0;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        display: flex;
+        height: 100vh;
+        overflow: hidden;
+    }
+    #main-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        position: relative;
+    }
+    #video-container {
+        width: 100%;
+        max-width: 1200px;
+        aspect-ratio: 16 / 9;
+        background-color: #000;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    }
+    iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+    }
+    #playlist-panel {
+        width: 400px;
+        background-color: var(--panel-bg);
+        border-left: 1px solid #333;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+    }
+    .playlist-header {
+        padding: 20px;
+        font-size: 1.2rem;
+        font-weight: bold;
+        border-bottom: 1px solid #333;
+        position: sticky;
+        top: 0;
+        background-color: var(--panel-bg);
+        z-index: 10;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .reset-btn {
+        background: transparent;
+        color: #aaa;
+        border: 1px solid #555;
+        padding: 5px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.8rem;
+    }
+    .reset-btn:hover {
+        background: #333;
+        color: white;
+    }
+    .video-item {
+        display: flex;
+        padding: 12px;
+        gap: 12px;
+        cursor: pointer;
+        border-bottom: 1px solid #333;
+        transition: background 0.2s ease;
+    }
+    .video-item:hover {
+        background-color: var(--hover-color);
+    }
+    .video-item.active {
+        background-color: var(--hover-color);
+        border-left: 4px solid var(--accent);
+    }
+    .thumbnail {
+        width: 120px;
+        height: 68px;
+        border-radius: 8px;
+        object-fit: cover;
+        background-color: #000;
+    }
+    .video-info {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    .video-title {
+        font-size: 0.9rem;
+        margin: 0 0 5px 0;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        line-height: 1.4;
+    }
+    .video-author {
+        font-size: 0.8rem;
+        color: #aaa;
+        margin: 0;
+    }
+    #setup-box {
+        background: var(--panel-bg);
+        padding: 30px;
+        border-radius: 12px;
+        text-align: center;
+        max-width: 500px;
+        width: 100%;
+        border: 1px solid #333;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    #setup-box h2 { margin-top: 0; }
+    .input-group {
+        text-align: left;
+        margin-bottom: 15px;
+    }
+    .input-group label {
+        display: block;
+        font-size: 0.9rem;
+        color: #aaa;
+        margin-bottom: 5px;
+    }
+    #setup-box input[type="text"], #setup-box input[type="password"] {
+        width: 100%;
+        padding: 10px;
+        border-radius: 6px;
+        border: 1px solid #555;
+        background: #111;
+        color: white;
+        box-sizing: border-box;
+    }
+    #setup-box button.save-btn {
+        padding: 12px 24px;
+        background: var(--accent);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+        width: 100%;
+        font-size: 1rem;
+        margin-top: 10px;
+    }
+    #setup-box button.save-btn:hover { background: #cc0000; }
+    .hidden { display: none !important; }
+    
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: var(--panel-bg); }
+    ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #777; }
+</style>
+</head>
+<body>
+
+<div id="main-content">
+    <div id="setup-box" class="hidden">
+        <h2>FocusTube Setup</h2>
+        <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 20px;">Your credentials are saved securely in your browser's local storage and will not be shared.</p>
+        
+        <div class="input-group">
+            <label for="api-key-input">YouTube Data API v3 Key</label>
+            <input type="password" id="api-key-input" placeholder="AIzaSy...">
+        </div>
+
+        <div class="input-group">
+            <label for="github-url-input">GitHub Raw URL (playlist.txt)</label>
+            <input type="text" id="github-url-input" placeholder="https://raw.githubusercontent.com/...">
+        </div>
+
+        <button class="save-btn" onclick="saveAndLoad()">Save & Load Playlist</button>
+    </div>
+    
+    <div id="video-container" class="hidden">
+        <iframe id="youtube-player" src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    </div>
+</div>
+
+<div id="playlist-panel">
+    <div class="playlist-header">
+        <span>Playlist</span>
+        <button class="reset-btn" onclick="resetSettings()">Reset Settings</button>
+    </div>
+    <div id="playlist-items">
+        <div style="padding: 20px; color: #777; text-align: center;">Awaiting setup...</div>
+    </div>
+</div>
+
+<script>
+    const setupBox = document.getElementById('setup-box');
+    const videoContainer = document.getElementById('video-container');
+    const player = document.getElementById('youtube-player');
+    const playlistItemsContainer = document.getElementById('playlist-items');
+
+    // Check Local Storage on load
+    window.onload = () => {
+        const savedApiKey = localStorage.getItem('focusTubeApiKey');
+        const savedGithubUrl = localStorage.getItem('focusTubeGithubUrl');
+
+        if (savedApiKey && savedGithubUrl) {
+            fetchFromGitHub(savedGithubUrl, savedApiKey);
+        } else {
+            setupBox.classList.remove('hidden');
+        }
+    };
+
+    function saveAndLoad() {
+        const apiKey = document.getElementById('api-key-input').value.trim();
+        const githubUrl = document.getElementById('github-url-input').value.trim();
+
+        if (!apiKey) return alert("Please enter your YouTube API Key.");
+        if (!githubUrl) return alert("Please enter the Raw GitHub URL.");
+
+        // Save to browser's Local Storage
+        localStorage.setItem('focusTubeApiKey', apiKey);
+        localStorage.setItem('focusTubeGithubUrl', githubUrl);
+
+        fetchFromGitHub(githubUrl, apiKey);
+    }
+
+    function resetSettings() {
+        if(confirm("Are you sure you want to clear your saved API Key and URL?")) {
+            localStorage.removeItem('focusTubeApiKey');
+            localStorage.removeItem('focusTubeGithubUrl');
+            location.reload(); // Refresh the page to show setup again
+        }
+    }
+
+    async function fetchFromGitHub(url, apiKey) {
+        setupBox.classList.add('hidden');
+        playlistItemsContainer.innerHTML = '<div style="padding: 20px;">Fetching from GitHub...</div>';
+
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error("Could not fetch the file. Ensure it is a Raw GitHub link and the repo is public.");
+            const text = await response.text();
+            processPlaylistText(text, apiKey);
+        } catch (error) {
+            alert(error.message);
+            resetSettings(); // Reset if the URL is completely broken so they aren't stuck
+        }
+    }
+
+    function processPlaylistText(text, apiKey) {
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+        if (lines.length === 0) {
+            alert("The GitHub file is empty or formatted incorrectly.");
+            return;
+        }
+        
+        const rawInput = lines[0];
+        let playlistId = rawInput;
+        
+        const listMatch = rawInput.match(/[?&]list=([^&#]+)/);
+        if (listMatch) {
+            playlistId = listMatch[1];
+        }
+
+        fetchPlaylistVideos(playlistId, apiKey);
+    }
+
+    async function fetchPlaylistVideos(playlistId, apiKey) {
+        playlistItemsContainer.innerHTML = '<div style="padding: 20px;">Loading YouTube data...</div>';
+        
+        let allVideos = [];
+        let nextPageToken = '';
+
+        try {
+            do {
+                const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&key=${apiKey}${nextPageToken ? '&pageToken=' + nextPageToken : ''}`;
+                const res = await fetch(url);
+                const data = await res.json();
+
+                if (data.error) {
+                    alert("YouTube API Error: " + data.error.message);
+                    resetSettings(); // Let them re-enter if key is invalid
+                    return;
+                }
+
+                allVideos = allVideos.concat(data.items);
+                nextPageToken = data.nextPageToken;
+            } while (nextPageToken);
+
+            renderPlaylist(allVideos);
+        } catch (error) {
+            alert("Failed to fetch playlist data. Check your connection.");
+        }
+    }
+
+    function renderPlaylist(videos) {
+        playlistItemsContainer.innerHTML = '';
+        
+        const validVideos = videos.filter(v => v.snippet.title !== 'Private video' && v.snippet.title !== 'Deleted video');
+
+        if(validVideos.length === 0) {
+            playlistItemsContainer.innerHTML = '<div style="padding: 20px;">No visible videos found in this playlist.</div>';
+            return;
+        }
+
+        validVideos.forEach((item, index) => {
+            const videoId = item.snippet.resourceId.videoId;
+            const title = item.snippet.title;
+            const channel = item.snippet.videoOwnerChannelTitle || "Unknown Channel";
+            const thumb = item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url || '';
+
+            const div = document.createElement('div');
+            div.className = 'video-item';
+            div.onclick = () => playVideo(videoId, div);
+
+            div.innerHTML = `
+                <img class="thumbnail" src="${thumb}" alt="Thumbnail">
+                <div class="video-info">
+                    <p class="video-title">${title}</p>
+                    <p class="video-author">${channel}</p>
+                </div>
+            `;
+
+            playlistItemsContainer.appendChild(div);
+
+            // Play the very first video automatically
+            if (index === 0) {
+                playVideo(videoId, div);
+            }
+        });
+        
+        videoContainer.classList.remove('hidden');
+    }
+
+    function playVideo(videoId, element) {
+        player.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
+        
+        document.querySelectorAll('.video-item').forEach(el => el.classList.remove('active'));
+        element.classList.add('active');
+        
+        element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+</script>
+</body>
+</html>
